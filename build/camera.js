@@ -42,17 +42,27 @@ export class Camera {
             ]
         });
     }
+
+    static async listAvailableCameras() {
+        if (!ModulePromise) {
+            ModulePromise = initModule();
+        }
+        let Module = await ModulePromise;
+        return await Module.Context.listAvailableCameras().then(items => {
+            return items.map(item => {
+                const camera = new Camera();
+                // Already ready
+                camera.#context = item;
+                return camera;
+            });
+        });
+    }
     async connect() {
         if (!ModulePromise) {
             ModulePromise = initModule();
         }
         let Module = await ModulePromise;
         this.#context = await new Module.Context();
-    }
-    async #schedule(op) {
-        let res = this.#queue.then(() => op(this.#context));
-        this.#queue = res.catch(rethrowIfCritical);
-        return res;
     }
     async disconnect() {
         if (this.#context && !this.#context.isDeleted()) {
@@ -87,15 +97,10 @@ export class Camera {
     async consumeEvents() {
         return this.#schedule(context => context.consumeEvents());
     }
-    static async listAvailableCameras() {
-        console.log("init list");
-        if (!ModulePromise) {
-            console.log("new module");
-            ModulePromise = initModule();
-        }
-        console.log("wait");
-        let Module = await ModulePromise;
-        console.log("done");
-        return await Module.Context.listAvailableCameras();
+
+    async #schedule(op) {
+        let res = this.#queue.then(() => op(this.#context));
+        this.#queue = res.catch(rethrowIfCritical);
+        return res;
     }
 }
