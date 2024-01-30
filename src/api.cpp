@@ -20,13 +20,9 @@
 #include <emscripten/val.h>
 #include <gphoto2/gphoto2-camera.h>
 #include <gphoto2/gphoto2-list.h>
-#include <gphoto2/gphoto2.h>
 #include <stdlib.h>
 
-#include <cstring>
 #include <iostream>
-#include <string>
-#include <unordered_map>
 
 using emscripten::val;
 
@@ -67,70 +63,6 @@ int init_autodetect(CameraList *list, GPContext *context) {
   gp_list_reset(list);
   gp_camera_autodetect(list, context);
   return gp_list_count(list);
-}
-
-/*
- * This function opens a camera depending on the specified model and port.
- */
-int init_open_camera(Camera **camera, const char *model, const char *port,
-                     GPContext *context) {
-  printf("port: %s\n", port);
-  int ret, m, p;
-  CameraAbilities a;
-  GPPortInfo pi;
-
-  ret = gp_camera_new(camera);
-  if (ret < GP_OK) return ret;
-
-  if (!abilities) {
-    /* Load all the camera drivers we have... */
-    ret = gp_abilities_list_new(&abilities);
-    if (ret < GP_OK) return ret;
-    ret = gp_abilities_list_load(abilities, context);
-    if (ret < GP_OK) return ret;
-  }
-
-  /* First lookup the model / driver */
-  m = gp_abilities_list_lookup_model(abilities, model);
-  if (m < GP_OK) return ret;
-  ret = gp_abilities_list_get_abilities(abilities, m, &a);
-  if (ret < GP_OK) return ret;
-  ret = gp_camera_set_abilities(*camera, a);
-  if (ret < GP_OK) return ret;
-
-  if (!portinfolist) {
-    /* Load all the port drivers we have... */
-    ret = gp_port_info_list_new(&portinfolist);
-    if (ret < GP_OK) return ret;
-    ret = gp_port_info_list_load(portinfolist);
-    if (ret < 0) return ret;
-    ret = gp_port_info_list_count(portinfolist);
-    if (ret < 0) return ret;
-  }
-
-  /* Then associate the camera with the specified port */
-  p = gp_port_info_list_lookup_path(portinfolist, port);
-  switch (p) {
-    case GP_ERROR_UNKNOWN_PORT:
-      fprintf(stderr,
-              "The port you specified "
-              "('%s') can not be found. Please "
-              "specify one of the ports found by "
-              "'gphoto2 --list-ports' and make "
-              "sure the spelling is correct "
-              "(i.e. with prefix 'serial:' or 'usb:').",
-              port);
-      break;
-    default:
-      break;
-  }
-  if (p < GP_OK) return p;
-
-  ret = gp_port_info_list_get_info(portinfolist, p, &pi);
-  if (ret < GP_OK) return ret;
-  ret = gp_camera_set_port_info(*camera, pi);
-  if (ret < GP_OK) return ret;
-  return GP_OK;
 }
 
 const thread_local val Uint8Array = val::global("Uint8Array");
@@ -292,16 +224,14 @@ class Context {
     printf("list\n");
     printf("Number of cameras: %d\n", count);
     val cameras = val::array();
+    Camera *camera1;
+    gp_list_get_name(list, 0, &name);
+    gp_list_get_value(list, 0, &value);
+
+    gpp_try(gp_camera_new(&camera1));
+    gpp_try(gp_camera_init(camera1, context));
+    Context *c = new Context(camera1);
     for (i = 0; i < count; i++) {
-      Camera *camera1;
-      gp_list_set_name(list, i, "Super");
-      gp_list_get_name(list, i, &name);
-      gp_list_get_value(list, i, &value);
-      ret = init_open_camera(&camera1, name, value, context);
-      if (ret < GP_OK) {
-        fprintf(stderr, "Camera %s on port %s failed to open\n", name, value);
-      }
-      Context *c = new Context(camera1);
       cameras.call<void>("push", c);
       printf("initiated\n");
     }

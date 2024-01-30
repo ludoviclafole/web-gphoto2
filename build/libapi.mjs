@@ -375,7 +375,7 @@ function(moduleArg = {}) {
 
     var tempDouble;
     var tempI64;
-    var ASM_CONSTS = {474148: ($0, $1, $2) => stringToUTF16(Emval.toValue($0), $1, $2)};
+    var ASM_CONSTS = {473860: ($0, $1, $2) => stringToUTF16(Emval.toValue($0), $1, $2)};
 
     function em_libusb_notify() {
         dispatchEvent(new Event("em-libusb"))
@@ -6591,8 +6591,8 @@ function(moduleArg = {}) {
     var _asyncify_stop_unwind = () => (_asyncify_stop_unwind = wasmExports["hc"])();
     var _asyncify_start_rewind = a0 => (_asyncify_start_rewind = wasmExports["ic"])(a0);
     var _asyncify_stop_rewind = () => (_asyncify_stop_rewind = wasmExports["jc"])();
-    var ___start_em_js = Module["___start_em_js"] = 472940;
-    var ___stop_em_js = Module["___stop_em_js"] = 474148;
+    var ___start_em_js = Module["___start_em_js"] = 472652;
+    var ___stop_em_js = Module["___stop_em_js"] = 473860;
 
     function invoke_vi(index, a1) {
         var sp = stackSave();
