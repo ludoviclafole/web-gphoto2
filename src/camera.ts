@@ -18,15 +18,15 @@
 
 import initModule, {Context, Module} from '../build/libapi.mjs';
 
-export type { Config, SupportedOps } from '../build/libapi.mjs';
+export type {Config, SupportedOps} from '../build/libapi.mjs';
 
 // A helper that allows to distinguish critical errors from library errors.
 export function rethrowIfCritical(err: any) {
-  // If it's precisely Error, it's a custom error; anything else - SyntaxError,
-  // WebAssembly.RuntimeError, TypeError, etc. - is treated as critical here.
-  if (err?.constructor !== Error) {
-    throw err;
-  }
+    // If it's precisely Error, it's a custom error; anything else - SyntaxError,
+    // WebAssembly.RuntimeError, TypeError, etc. - is treated as critical here.
+    if (err?.constructor !== Error) {
+        throw err;
+    }
 }
 
 const INTERFACE_CLASS = 6; // PTP
@@ -35,84 +35,88 @@ const INTERFACE_SUBCLASS = 1; // MTP
 let ModulePromise: Promise<Module>;
 
 export class Camera {
-  #queue: Promise<any> = Promise.resolve();
-  #context: Context | null = null;
+    #queue: Promise<any> = Promise.resolve();
+    #context: Context | null = null;
 
-  static async showPicker() {
-    // @ts-ignore
-    await navigator.usb.requestDevice({
-      filters: [
-        {
-          classCode: INTERFACE_CLASS,
-          subclassCode: INTERFACE_SUBCLASS
+    static async showPicker() {
+        // @ts-ignore
+        await navigator.usb.requestDevice({
+            filters: [
+                {
+                    classCode: INTERFACE_CLASS,
+                    subclassCode: INTERFACE_SUBCLASS
+                }
+            ]
+        });
+    }
+
+    static async listAvailableCameras() {
+        if (!ModulePromise) {
+            ModulePromise = initModule();
         }
-      ]
-    });
-  }
+        let Module = await ModulePromise;
 
-  async connect() {
-    if (!ModulePromise) {
-      ModulePromise = initModule();
+        return await Module.Context.listAvailableCameras().then(items => {
+            return items.map(item => {
+                const camera = new Camera();
+                // Already ready
+                camera.#context = item
+                return camera;
+            });
+        });
     }
-    let Module = await ModulePromise;
-    this.#context = await new Module.Context();
-  }
 
-  async #schedule<T>(op: (context: Context) => Promise<T>): Promise<T> {
-    let res = this.#queue.then(() => op(this.#context!));
-    this.#queue = res.catch(rethrowIfCritical);
-    return res;
-  }
-
-  async disconnect() {
-    if (this.#context && !this.#context.isDeleted()) {
-      this.#context.delete();
+    async connect() {
+        if (!ModulePromise) {
+            ModulePromise = initModule();
+        }
+        let Module = await ModulePromise;
+        this.#context = await new Module.Context();
     }
-  }
 
-  async getConfig() {
-    return this.#schedule(context => context.configToJS());
-  }
-
-  async getSupportedOps() {
-    if (this.#context) {
-      return await this.#context.supportedOps();
+    async disconnect() {
+        if (this.#context && !this.#context.isDeleted()) {
+            this.#context.delete();
+        }
     }
-    throw new Error('You need to connect to the camera first');
-  }
 
-  async setConfigValue(name: string, value: string | number | boolean) {
-    let uiTimeout: Promise<void> | undefined;
-    await this.#schedule(context => {
-      // This is terrible, yes... but some configs return too quickly before they're actually updated.
-      // We want to wait some time before updating the UI in that case, but not block subsequent ops.
-      uiTimeout = new Promise(resolve => setTimeout(resolve, 800));
-      return context.setConfigValue(name, value);
-    });
-    await uiTimeout;
-  }
-
-  async capturePreviewAsBlob() {
-    return this.#schedule(context => context.capturePreviewAsBlob());
-  }
-
-  async captureImageAsFile() {
-    return this.#schedule(context => context.captureImageAsFile());
-  }
-
-  async consumeEvents() {
-    return this.#schedule(context => context.consumeEvents());
-  }
-
-  static async listAvailableCameras() {
-    console.log("init list")
-    if (!ModulePromise) {
-      console.log("new module")
-      ModulePromise = initModule();
+    async getConfig() {
+        return this.#schedule(context => context.configToJS());
     }
-    console.log("wait")
-    let Module = await ModulePromise;
-    console.log("done")
-    return await Module.Context.listAvailableCameras();
-  }
+
+    async getSupportedOps() {
+        if (this.#context) {
+            return await this.#context.supportedOps();
+        }
+        throw new Error('You need to connect to the camera first');
+    }
+
+    async setConfigValue(name: string, value: string | number | boolean) {
+        let uiTimeout: Promise<void> | undefined;
+        await this.#schedule(context => {
+            // This is terrible, yes... but some configs return too quickly before they're actually updated.
+            // We want to wait some time before updating the UI in that case, but not block subsequent ops.
+            uiTimeout = new Promise(resolve => setTimeout(resolve, 800));
+            return context.setConfigValue(name, value);
+        });
+        await uiTimeout;
+    }
+
+    async capturePreviewAsBlob() {
+        return this.#schedule(context => context.capturePreviewAsBlob());
+    }
+
+    async captureImageAsFile() {
+        return this.#schedule(context => context.captureImageAsFile());
+    }
+
+    async consumeEvents() {
+        return this.#schedule(context => context.consumeEvents());
+    }
+
+    async #schedule<T>(op: (context: Context) => Promise<T>): Promise<T> {
+        let res = this.#queue.then(() => op(this.#context!));
+        this.#queue = res.catch(rethrowIfCritical);
+        return res;
+    }
 }
