@@ -51,6 +51,8 @@ declare class Context {
   consumeEvents(): Promise<boolean>;
   supportedOps(): SupportedOps;
 
+    static listAvailableCameras(): Promise<any[]>
+
   delete(): void;
   isDeleted(): boolean;
 }

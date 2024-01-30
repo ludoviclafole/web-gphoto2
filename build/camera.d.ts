@@ -21,4 +21,6 @@ export declare class Camera {
     capturePreviewAsBlob(): Promise<Blob>;
     captureImageAsFile(): Promise<File>;
     consumeEvents(): Promise<boolean>;
+
+    static listAvailableCameras(): Promise<any[]>;
 }

@@ -16,6 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 import initModule from '../build/libapi.mjs';
+
 // A helper that allows to distinguish critical errors from library errors.
 export function rethrowIfCritical(err) {
     // If it's precisely Error, it's a custom error; anything else - SyntaxError,
@@ -85,5 +86,17 @@ export class Camera {
     }
     async consumeEvents() {
         return this.#schedule(context => context.consumeEvents());
+    }
+
+    static async listAvailableCameras() {
+        console.log("init list");
+        if (!ModulePromise) {
+            console.log("new module");
+            ModulePromise = initModule();
+        }
+        console.log("wait");
+        let Module = await ModulePromise;
+        console.log("done");
+        return await Module.Context.listAvailableCameras();
     }
 }
