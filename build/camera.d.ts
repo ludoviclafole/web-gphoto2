@@ -1,3 +1,5 @@
+import {Context} from '../build/libapi.mjs';
+
 export type { Config, SupportedOps } from '../build/libapi.mjs';
 export declare function rethrowIfCritical(err: any): void;
 export declare class Camera {
@@ -22,5 +24,5 @@ export declare class Camera {
     captureImageAsFile(): Promise<File>;
     consumeEvents(): Promise<boolean>;
 
-    static listAvailableCameras(): Promise<any[]>;
+    static listAvailableCameras(): Promise<Context[]>;
 }

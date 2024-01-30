@@ -87,7 +87,6 @@ export class Camera {
     async consumeEvents() {
         return this.#schedule(context => context.consumeEvents());
     }
-
     static async listAvailableCameras() {
         console.log("init list");
         if (!ModulePromise) {
