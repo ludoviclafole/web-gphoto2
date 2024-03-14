@@ -19,7 +19,10 @@
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 #include <gphoto2/gphoto2-camera.h>
+#include <gphoto2/gphoto2-abilities-list.h>
+#include <gphoto2/gphoto2-port-info-list.h>
 #include <gphoto2/gphoto2-list.h>
+#include <gphoto2/gphoto2-port.h>
 #include <stdlib.h>
 
 #include <iostream>
@@ -34,6 +37,7 @@ using GPPWidget = gpp_unique_ptr<CameraWidget, gp_widget_unref>;
 
 void gpp_try(int status) {
   if (status != GP_OK) {
+    printf("error: %s\n", gp_result_as_string(status));
     throw std::runtime_error(gp_result_as_string(status));
   }
 }
@@ -72,10 +76,13 @@ const thread_local val arrayOf = val::global("Array")["of"];
 
 class Context {
  public:
-  Context() : Context(GPP_CALL(Camera *, gp_camera_new(_))) {
-    printf("init nude\n");
+  Context() : Context(GPP_CALL(Camera *, gp_camera_new(_))) {}
+  Context(Camera *camera) : camera(camera) { }
+
+  void destroyCamera() {
+      gp_camera_unref(camera.get());
+      camera.release();
   }
-  Context(Camera *camera) : camera(camera) { printf("init not nude\n"); }
 
   val supportedOps() {
     auto ops =
@@ -206,34 +213,51 @@ class Context {
   static val listAvailableCameras() {
     printf("Hello\n");
     CameraList *list;
-    int ret, i;
+    int i;
     const char *name, *value;
 
     GPContext *context = Context::getContext();
     printf("get list\n");
     gp_list_new(&list);
-
-    ret = gp_camera_autodetect(list, context);
-    printf("detected\n");
-    if (ret < GP_OK) {
-      printf("error detecting cameras: %d\n", ret);
-      return val::object();
-    }
-
+    gp_camera_autodetect(list, context);
     int count = gp_list_count(list);
-    printf("list\n");
-    printf("Number of cameras: %d\n", count);
+    printf("get list %i\n", count);
     val cameras = val::array();
     Camera *camera1;
-    gp_list_get_name(list, 0, &name);
-    gp_list_get_value(list, 0, &value);
+    CameraAbilities cam_abilities;
+    CameraAbilitiesList *abilities;
+    GPPortInfoList *portinfolist;
+    GPPortInfo port_info;
 
-    gpp_try(gp_camera_new(&camera1));
-    gpp_try(gp_camera_init(camera1, context));
-    Context *c = new Context(camera1);
-    for (i = 0; i < count; i++) {
+    gp_port_info_list_new(&portinfolist);
+    gp_port_info_list_load(portinfolist);
+
+
+    gp_abilities_list_new(&abilities);
+    gp_abilities_list_load(abilities, context);
+
+    for (i = count - 1; i >= 0; i--) {
+      printf("turn 1 - %i\n", i);
+      gp_list_get_name(list, i, &name);
+      printf("turn 1.1 - %i\n", i);
+      gp_list_get_value(list, i, &value);
+
+      printf("turn 3 - %i\n", i);
+      int portIndex = gp_port_info_list_lookup_path(portinfolist, value);
+      gp_port_info_list_get_info(portinfolist, portIndex, &port_info);
+      printf("turn 4 - %i\n", i);
+
+      gpp_try(gp_camera_new(&camera1));
+      printf("turn 6 - %i\n", i);
+      gpp_try(gp_camera_set_port_info(camera1, port_info));
+      printf("turn 7 - %i\n", i);
+      gpp_try(gp_camera_init(camera1, context));
+      printf("turn 8 - %i\n", i);
+
+      Context *c = new Context(camera1);
+      printf("turn 9 - %i\n", i);
       cameras.call<void>("push", c);
-      printf("initiated\n");
+      printf("turn 10 - %i\n", i);
     }
 
     printf("completely done\n");

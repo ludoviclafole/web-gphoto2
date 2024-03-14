@@ -16,7 +16,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 import initModule from '../build/libapi.mjs';
-
 // A helper that allows to distinguish critical errors from library errors.
 export function rethrowIfCritical(err) {
     // If it's precisely Error, it's a custom error; anything else - SyntaxError,
@@ -29,8 +28,11 @@ const INTERFACE_CLASS = 6; // PTP
 const INTERFACE_SUBCLASS = 1; // MTP
 let ModulePromise;
 export class Camera {
-    #queue = Promise.resolve();
+    static #queue = Promise.resolve();
     #context = null;
+    destroy() {
+        this.#context?.destroyCamera();
+    }
     static async showPicker() {
         // @ts-ignore
         await navigator.usb.requestDevice({
@@ -42,14 +44,13 @@ export class Camera {
             ]
         });
     }
-
     static async listAvailableCameras() {
         if (!ModulePromise) {
             ModulePromise = initModule();
         }
         let Module = await ModulePromise;
-        return await Module.Context.listAvailableCameras().then(items => {
-            return items.map(item => {
+        return await Module.Context.listAvailableCameras().then((items) => {
+            return items.map((item) => {
                 const camera = new Camera();
                 // Already ready
                 camera.#context = item;
@@ -63,11 +64,6 @@ export class Camera {
         }
         let Module = await ModulePromise;
         this.#context = await new Module.Context();
-    }
-    async disconnect() {
-        if (this.#context && !this.#context.isDeleted()) {
-            this.#context.delete();
-        }
     }
     async getConfig() {
         return this.#schedule(context => context.configToJS());
@@ -97,10 +93,9 @@ export class Camera {
     async consumeEvents() {
         return this.#schedule(context => context.consumeEvents());
     }
-
     async #schedule(op) {
-        let res = this.#queue.then(() => op(this.#context));
-        this.#queue = res.catch(rethrowIfCritical);
+        let res = Camera.#queue.then(() => op(this.#context));
+        Camera.#queue = res.catch(rethrowIfCritical);
         return res;
     }
 }

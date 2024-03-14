@@ -35,8 +35,12 @@ const INTERFACE_SUBCLASS = 1; // MTP
 let ModulePromise: Promise<Module>;
 
 export class Camera {
-    #queue: Promise<any> = Promise.resolve();
+    static #queue: Promise<any> = Promise.resolve();
     #context: Context | null = null;
+
+    destroy() {
+        this.#context?.destroyCamera()
+    }
 
     static async showPicker() {
         // @ts-ignore
@@ -56,8 +60,8 @@ export class Camera {
         }
         let Module = await ModulePromise;
 
-        return await Module.Context.listAvailableCameras().then(items => {
-            return items.map(item => {
+        return await Module.Context.listAvailableCameras().then((items: any) => {
+            return items.map((item: any) => {
                 const camera = new Camera();
                 // Already ready
                 camera.#context = item
@@ -72,12 +76,6 @@ export class Camera {
         }
         let Module = await ModulePromise;
         this.#context = await new Module.Context();
-    }
-
-    async disconnect() {
-        if (this.#context && !this.#context.isDeleted()) {
-            this.#context.delete();
-        }
     }
 
     async getConfig() {
@@ -115,8 +113,8 @@ export class Camera {
     }
 
     async #schedule<T>(op: (context: Context) => Promise<T>): Promise<T> {
-        let res = this.#queue.then(() => op(this.#context!));
-        this.#queue = res.catch(rethrowIfCritical);
+        let res = Camera.#queue.then(() => op(this.#context!));
+        Camera.#queue = res.catch(rethrowIfCritical);
         return res;
     }
 }

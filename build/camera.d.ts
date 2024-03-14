@@ -2,11 +2,10 @@ export type { Config, SupportedOps } from '../build/libapi.mjs';
 export declare function rethrowIfCritical(err: any): void;
 export declare class Camera {
     #private;
+    destroy(): void;
     static showPicker(): Promise<void>;
-
-    static listAvailableCameras(): Promise<Camera[]>;
+    static listAvailableCameras(): Promise<any>;
     connect(): Promise<void>;
-    disconnect(): Promise<void>;
     getConfig(): Promise<{
         name: string;
         info: string;
