@@ -29,17 +29,24 @@ export function rethrowIfCritical(err: any) {
     }
 }
 
-const INTERFACE_CLASS = 6; // PTP
+export type CancellationToken = {
+    isCancelled: boolean;
+};
+
+const INTERFACE_CLASS = 6; // PTP 
 const INTERFACE_SUBCLASS = 1; // MTP
 
 let ModulePromise: Promise<Module>;
 
 export class Camera {
     static #queue: Promise<any> = Promise.resolve();
+    static #isDestroying: boolean = false;
+    static #cancellationToken: CancellationToken = this.createCancellationToken()
     #context: Context | null = null;
 
-    destroy() {
-        this.#context?.destroyCamera()
+    destroyCamera() {
+        Camera.#isDestroying = true;
+        this.#context?.destroyContext();
     }
 
     static async showPicker() {
@@ -112,9 +119,30 @@ export class Camera {
         return this.#schedule(context => context.consumeEvents());
     }
 
-    async #schedule<T>(op: (context: Context) => Promise<T>): Promise<T> {
-        let res = Camera.#queue.then(() => op(this.#context!));
-        Camera.#queue = res.catch(rethrowIfCritical);
+    async #schedule<T>(op: (context: Context) => Promise<T>, token: CancellationToken = Camera.#cancellationToken): Promise<T | undefined> {
+        if (Camera.#isDestroying || token.isCancelled) {
+            return;
+        }
+
+        let res = Camera.#queue.then(() => {
+            // Check the cancellation token again before executing the operation
+            if (token.isCancelled || Camera.#isDestroying) {
+                return Promise.resolve(undefined); // Operation was cancelled
+            }
+            return op(this.#context!);
+        });
+
+        Camera.#queue = res.catch(rethrowIfCritical); // Assuming rethrowIfCritical is defined elsewhere
         return res;
+    }
+
+    // Method to create a cancellation token
+    static createCancellationToken(): CancellationToken {
+        return { isCancelled: false };
+    }
+
+    // Method to cancel all scheduled operations
+    static cancelAll() {
+        Camera.#cancellationToken.isCancelled = true;
     }
 }

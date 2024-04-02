@@ -79,9 +79,27 @@ class Context {
   Context() : Context(GPP_CALL(Camera *, gp_camera_new(_))) {}
   Context(Camera *camera) : camera(camera) { }
 
-  void destroyCamera() {
-      gp_camera_unref(camera.get());
-      camera.release();
+  bool destroyContext() {
+    	CameraEventType	evttype;
+			CameraFilePath	*path;
+			void    	*evtdata;
+			int		fd;
+			evtdata = NULL;
+      int i = 0;
+      while (1)
+      {
+        printf("waiting %i event\n", i++);
+        gp_camera_exit(camera.get(), Context::getContext());
+        int ret;
+        ret = gp_camera_wait_for_event (camera.get(), 2000, &evttype, &evtdata, Context::getContext());
+        if (evttype == GP_EVENT_TIMEOUT || ret != GP_OK)
+        {
+          if (evttype == GP_EVENT_TIMEOUT)
+              printf("timeout");
+            return true;
+        }
+      }
+      return false;
   }
 
   val supportedOps() {
@@ -270,13 +288,10 @@ class Context {
 
   static GPContext *context;
   static GPContext *getContext() {
-    printf("get context -\n");
     if (!context) {
-      printf("new one -\n");
       context = gp_context_new();
       gp_context_set_error_func(context, gpp_log_error, nullptr);
     }
-    printf("got context --\n");
     return context;
   }
 
@@ -338,7 +353,7 @@ class Context {
         break;
       }
       case GP_WIDGET_TEXT: {
-        result.set("type", "text");
+        result.set("type", "text"); 
         result.set("value",
                    GPP_CALL(const char *, gp_widget_get_value(widget, _)));
 
@@ -407,5 +422,6 @@ EMSCRIPTEN_BINDINGS(gphoto2_js_api) {
       .function("captureImageAsFile", &Context::captureImageAsFile)
       .function("consumeEvents", &Context::consumeEvents)
       .function("supportedOps", &Context::supportedOps)
+      .function("destroyContext", &Context::destroyContext)
       .class_function("listAvailableCameras", &Context::listAvailableCameras);
 }

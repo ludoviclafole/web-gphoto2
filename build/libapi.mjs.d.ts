@@ -44,7 +44,6 @@ declare class Context {
     static listAvailableCameras(): Promise<Context[]>
 
     configToJS(): Promise<Config & { type: 'window' }>;
-    destroyCamera(): void;
 
     setConfigValue(
         name: string,
@@ -58,6 +57,12 @@ declare class Context {
     consumeEvents(): Promise<boolean>;
 
     supportedOps(): SupportedOps;
+
+    delete(): void;
+
+    isDeleted(): boolean;
+
+    destroyContext(): boolean;
 }
 
 export interface Module extends EmscriptenModule {
