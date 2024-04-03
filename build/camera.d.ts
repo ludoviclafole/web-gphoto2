@@ -1,6 +1,6 @@
 export type { Config, SupportedOps } from '../build/libapi.mjs';
 export declare function rethrowIfCritical(err: any): void;
-export declare type CancellationToken = {
+export type CancellationToken = {
     isCancelled: boolean;
 };
 export declare class Camera {

@@ -122,7 +122,7 @@ class Context {
     for (;;) {
       CameraEventType event_type = GP_EVENT_UNKNOWN;
       gpp_unique_ptr<void, free> event_data(GPP_CALL(
-          void *, gp_camera_wait_for_event(camera.get(), 0, &event_type, _,
+          void *, gp_camera_wait_for_event(camera.get(), 10000, &event_type, _,
                                            Context::getContext())));
       if (event_type == GP_EVENT_TIMEOUT) {
         break;
@@ -229,17 +229,14 @@ class Context {
   }
 
   static val listAvailableCameras() {
-    printf("Hello\n");
     CameraList *list;
     int i;
     const char *name, *value;
 
     GPContext *context = Context::getContext();
-    printf("get list\n");
     gp_list_new(&list);
     gp_camera_autodetect(list, context);
     int count = gp_list_count(list);
-    printf("get list %i\n", count);
     val cameras = val::array();
     Camera *camera1;
     CameraAbilities cam_abilities;
@@ -255,30 +252,20 @@ class Context {
     gp_abilities_list_load(abilities, context);
 
     for (i = count - 1; i >= 0; i--) {
-      printf("turn 1 - %i\n", i);
       gp_list_get_name(list, i, &name);
-      printf("turn 1.1 - %i\n", i);
       gp_list_get_value(list, i, &value);
 
-      printf("turn 3 - %i\n", i);
       int portIndex = gp_port_info_list_lookup_path(portinfolist, value);
       gp_port_info_list_get_info(portinfolist, portIndex, &port_info);
-      printf("turn 4 - %i\n", i);
 
       gpp_try(gp_camera_new(&camera1));
-      printf("turn 6 - %i\n", i);
       gpp_try(gp_camera_set_port_info(camera1, port_info));
-      printf("turn 7 - %i\n", i);
       gpp_try(gp_camera_init(camera1, context));
-      printf("turn 8 - %i\n", i);
 
       Context *c = new Context(camera1);
-      printf("turn 9 - %i\n", i);
       cameras.call<void>("push", c);
-      printf("turn 10 - %i\n", i);
     }
 
-    printf("completely done\n");
     return cameras;
   }
 
@@ -353,7 +340,7 @@ class Context {
         break;
       }
       case GP_WIDGET_TEXT: {
-        result.set("type", "text"); 
+        result.set("type", "text");
         result.set("value",
                    GPP_CALL(const char *, gp_widget_get_value(widget, _)));
 

@@ -107,7 +107,7 @@ export class Camera {
             }
             return op(this.#context);
         });
-        Camera.#queue = res.catch(rethrowIfCritical); // Assuming rethrowIfCritical is defined elsewhere
+        Camera.#queue = res.catch(() => null); // Assuming rethrowIfCritical is defined elsewhere
         return res;
     }
     // Method to create a cancellation token
